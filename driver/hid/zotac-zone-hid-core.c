@@ -76,6 +76,16 @@ static int get_interface_num(struct hid_device *hdev)
 	return -1;
 }
 
+static bool zotac_is_gamepad_owner_interface(int intf_num)
+{
+	return intf_num == ZOTAC_DIAL_INTERFACE;
+}
+
+static bool zotac_is_command_owner_interface(int intf_num)
+{
+	return intf_num == ZOTAC_COMMAND_INTERFACE;
+}
+
 static void process_dial_wheel_report(struct zotac_device *zotac, u8 *data,
 				      int size)
 {
@@ -474,19 +484,28 @@ static int zotac_input_configured(struct hid_device *hdev, struct hid_input *hi)
 static int zotac_resubmit_urbs(struct hid_device *hdev)
 {
 	int intf_num = get_interface_num(hdev);
-	int ret = 0;
+	int ret = 0, i;
 
-	if (zotac.gamepad && zotac.gamepad->urbs[0] &&
-	    (intf_num == ZOTAC_GAMEPAD_INTERFACE ||
-	     intf_num == ZOTAC_DIAL_INTERFACE)) {
-		ret = usb_submit_urb(zotac.gamepad->urbs[0], GFP_NOIO);
+	if (!zotac_is_gamepad_owner_interface(intf_num) || !zotac.gamepad)
+		return 0;
+
+	for (i = 0; i < ZOTAC_NUM_URBS; i++) {
+		if (!zotac.gamepad->urbs[i])
+			continue;
+
+		ret = usb_submit_urb(zotac.gamepad->urbs[i], GFP_NOIO);
 		if (ret) {
-			hid_err(hdev, "Failed to resubmit gamepad URB: %d\n",
-				ret);
+			hid_err(hdev, "Failed to resubmit gamepad URB %d: %d\n",
+				i, ret);
+			while (--i >= 0) {
+				if (zotac.gamepad->urbs[i])
+					usb_kill_urb(zotac.gamepad->urbs[i]);
+			}
 			return ret;
 		}
-		hid_dbg(hdev, "Gamepad URB resubmitted successfully\n");
 	}
+
+	hid_dbg(hdev, "Gamepad URBs resubmitted successfully\n");
 
 	return 0;
 }
@@ -517,8 +536,7 @@ static int zotac_suspend(struct hid_device *hdev, pm_message_t message)
 
 	hid_dbg(hdev, "suspend called for interface %d\n", intf_num);
 
-	if (zotac.gamepad && (intf_num == ZOTAC_GAMEPAD_INTERFACE ||
-			intf_num == ZOTAC_DIAL_INTERFACE)) {
+	if (zotac.gamepad && zotac_is_gamepad_owner_interface(intf_num)) {
 		/* Kill all input URBs */
 		for (i = 0; i < ZOTAC_NUM_URBS; i++) {
 			if (zotac.gamepad->urbs[i]) {
@@ -540,7 +558,7 @@ static int zotac_suspend(struct hid_device *hdev, pm_message_t message)
 		}
 	}
 
-	if (zotac.led_rgb_dev && intf_num == ZOTAC_COMMAND_INTERFACE)
+	if (zotac.led_rgb_dev && zotac_is_command_owner_interface(intf_num))
 		zotac_rgb_suspend(&zotac);
 
 	return 0;
@@ -552,19 +570,17 @@ static void zotac_remove(struct hid_device *hdev)
 
 	dev_info(&hdev->dev, "Removing driver for interface %d", intf_num);
 
-	if (intf_num == ZOTAC_COMMAND_INTERFACE) {
+	if (zotac_is_command_owner_interface(intf_num)) {
 		dev_info(&hdev->dev, "Unregistering sysfs entries");
 		zotac_unregister_sysfs(&zotac);
+		if (zotac.cfg_data)
+			zotac_cfg_cleanup(&zotac);
+		if (zotac.led_rgb_dev)
+			zotac_rgb_cleanup(&zotac);
 	}
 
-	if (zotac.gamepad)
+	if (zotac.gamepad && zotac_is_gamepad_owner_interface(intf_num))
 		zotac_cleanup_gamepad(&zotac);
-
-	if (zotac.cfg_data)
-		zotac_cfg_cleanup(&zotac);
-
-	if (zotac.led_rgb_dev)
-		zotac_rgb_cleanup(&zotac);
 
 	hid_hw_stop(hdev);
 }

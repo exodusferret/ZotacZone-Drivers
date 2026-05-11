@@ -484,12 +484,14 @@ err_free_gamepad:
 void zotac_cleanup_gamepad(struct zotac_device *zotac)
 {
 	struct zotac_gamepad *gamepad;
+	struct usb_device *udev;
 	int i;
 
 	if (!zotac || !zotac->gamepad)
 		return;
 
 	gamepad = zotac->gamepad;
+	udev = zotac->udev;
 
 	/* Set disconnect first, use WRITE_ONCE and memory barrier to ensure visibility */
 	WRITE_ONCE(gamepad->disconnect, true);
@@ -503,6 +505,8 @@ void zotac_cleanup_gamepad(struct zotac_device *zotac)
 			usb_free_urb(gamepad->urbs[i]);
 			gamepad->urbs[i] = NULL;
 		}
+		kfree(gamepad->urb_buf[i]);
+		gamepad->urb_buf[i] = NULL;
 	}
 
 	for (i = 0; i < ZOTAC_NUM_FF_URBS; i++) {
@@ -511,6 +515,12 @@ void zotac_cleanup_gamepad(struct zotac_device *zotac)
 			usb_free_urb(gamepad->ff_urbs[i]);
 			gamepad->ff_urbs[i] = NULL;
 		}
+		if (gamepad->ff_data[i] && udev) {
+			usb_free_coherent(udev, ZOTAC_FF_REPORT_LEN,
+					  gamepad->ff_data[i],
+					  gamepad->ff_dma[i]);
+		}
+		gamepad->ff_data[i] = NULL;
 	}
 
 	if (gamepad->dev) {
@@ -519,4 +529,5 @@ void zotac_cleanup_gamepad(struct zotac_device *zotac)
 	}
 
 	zotac->gamepad = NULL;
+	kfree(gamepad);
 }
