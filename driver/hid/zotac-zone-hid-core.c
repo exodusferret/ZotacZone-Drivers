@@ -399,6 +399,9 @@ static int zotac_probe(struct hid_device *hdev, const struct hid_device_id *id)
 	}
 
 	switch (intf_num) {
+	case ZOTAC_GAMEPAD_INTERFACE:
+		ret = hid_hw_start(hdev, 0);
+		break;
 	case ZOTAC_DIAL_INTERFACE:
 		ret = hid_hw_start(hdev, HID_CONNECT_DEFAULT);
 		break;
