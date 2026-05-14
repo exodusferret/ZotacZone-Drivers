@@ -23,7 +23,7 @@ To install the drivers and the manager, you only need to download and run the in
 1.  **Download the installer:**
     You can download `install_openzone_drivers.sh` manually from the repository files, or use the command below:
     ```bash
-    wget https://raw.githubusercontent.com/OpenZotacZone/ZotacZone-Drivers/main/install_openzone_drivers.sh
+    wget https://raw.githubusercontent.com/exodusferret/ZotacZone-Drivers/main/install_openzone_drivers.sh
     ```
 
 2.  **Make it executable:**

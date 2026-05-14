@@ -4,7 +4,7 @@
 # ==============================================================================
 #  Drivers by: flukejones (Luke D. Jones)
 #  Installer by: Pfahli
-#  Repository: OpenZotacZone/ZotacZone-Drivers
+#  Repository: exodusferret/ZotacZone-Drivers
 # ==============================================================================
 
 # --- Colors & Formatting ---
@@ -17,7 +17,7 @@ BOLD='\033[1m'
 NC='\033[0m'
 
 # --- Configuration ---
-REPO_RAW_BASE="https://raw.githubusercontent.com/OpenZotacZone/ZotacZone-Drivers/refs/heads/main"
+REPO_RAW_BASE="https://raw.githubusercontent.com/exodusferret/ZotacZone-Drivers/refs/heads/main"
 INSTALL_DIR="/usr/local/lib/zotac-zone"
 BUILD_DIR="/tmp/zotac_zone_build"
 SERVICE_NAME="zotac-zone-drivers.service"
